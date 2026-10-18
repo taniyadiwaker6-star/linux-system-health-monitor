@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linux System Health & Log Monitor - Interactive Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="dashboard-wrapper">
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="server-status-dot pulse-green" id="server-status-dot"></div>
+        <div>
+          <div class="brand-title-row">
+            <h1>Linux System Health Monitor</h1>
+            <span class="badge badge-os">Ubuntu 24.04 LTS (x86_64)</span>
+          </div>
+          <p class="nav-subtitle">Host: <code id="host-name">prod-srv-01</code> &bull; Uptime: <span id="uptime-display">14 days, 6 hours, 32 mins</span></p>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button id="btn-refresh" class="btn btn-primary">
+          <span class="btn-icon">⚡</span> Run Health Check
+        </button>
+        <button id="btn-export-report" class="btn btn-outline">
+          <span class="btn-icon">📥</span> Export report.txt
+        </button>
+        <a href="https://github.com/taniyadiwaker6-star/linux-system-health-monitor" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </header>
+
+    <!-- Simulation Toolbar -->
+    <section class="sim-banner">
+      <span class="sim-label">🧪 Interactive Scenarios:</span>
+      <div class="sim-buttons">
+        <button class="btn btn-sm btn-sim active" data-scenario="normal">Normal (Healthy)</button>
+        <button class="btn btn-sm btn-sim" data-scenario="high-load">High CPU / Load</button>
+        <button class="btn btn-sm btn-sim" data-scenario="disk-alert">Disk >= 90% Warning</button>
+        <button class="btn btn-sm btn-sim" data-scenario="auth-fail">Failed SSH Logins</button>
+      </div>
+      <div class="sim-timestamp">
+        Last scan: <span id="last-scan-time">Just now</span>
+      </div>
+    </section>
+
+    <!-- Metric KPI Cards -->
+    <section class="kpi-grid">
+      <!-- CPU KPI -->
+      <div class="kpi-card" id="card-cpu">
+        <div class="kpi-header">
+          <span class="kpi-title">CPU LOAD & CORES</span>
+          <span class="kpi-badge badge-success" id="badge-cpu">Normal</span>
+        </div>
+        <div class="kpi-main">
+          <div class="kpi-num" id="val-cpu-pct">24%</div>
+          <div class="kpi-sub" id="val-cpu-cores">8 Logical Cores</div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill fill-green" id="bar-cpu" style="width: 24%;"></div>
+        </div>
+        <div class="kpi-footer">
+          <span>Load Avg: <code id="val-loadavg">0.45 0.62 0.58</code></span>
+        </div>
+      </div>
+
+      <!-- Memory KPI -->
+      <div class="kpi-card" id="card-mem">
+        <div class="kpi-header">
+          <span class="kpi-title">MEMORY USAGE</span>
+          <span class="kpi-badge badge-success" id="badge-mem">Healthy</span>
+        </div>
+        <div class="kpi-main">
+          <div class="kpi-num" id="val-mem-pct">42%</div>
+          <div class="kpi-sub"><span id="val-mem-used">6.7G</span> / <span id="val-mem-total">15.9G</span></div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill fill-cyan" id="bar-mem" style="width: 42%;"></div>
+        </div>
+        <div class="kpi-footer">
+          <span>Available: <code id="val-mem-avail">9.2G</code> &bull; Buff/Cache: <code id="val-mem-cache">3.1G</code></span>
+        </div>
+      </div>
+
+      <!-- Filesystem KPI -->
+      <div class="kpi-card" id="card-disk">
+        <div class="kpi-header">
+          <span class="kpi-title">DISK STORAGE</span>
+          <span class="kpi-badge badge-success" id="badge-disk">Healthy</span>
+        </div>
+        <div class="kpi-main">
+          <div class="kpi-num" id="val-disk-max">58%</div>
+          <div class="kpi-sub">Highest filesystem usage</div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill fill-green" id="bar-disk" style="width: 58%;"></div>
+        </div>
+        <div class="kpi-footer">
+          <span id="disk-summary-text">No filesystem &ge;90% usage detected.</span>
+        </div>
+      </div>
+
+      <!-- Auth Failures KPI -->
+      <div class="kpi-card" id="card-auth">
+        <div class="kpi-header">
+          <span class="kpi-title">AUTH SECURITY</span>
+          <span class="kpi-badge badge-success" id="badge-auth">0 Failures</span>
+        </div>
+        <div class="kpi-main">
+          <div class="kpi-num" id="val-auth-count">0</div>
+          <div class="kpi-sub">Matching events in log</div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill fill-green" id="bar-auth" style="width: 0%;"></div>
+        </div>
+        <div class="kpi-footer">
+          <span>Source: <code>/var/log/auth.log</code></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content: Two Columns -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Filesystems & Top Processes -->
+      <div class="col-main">
+        <!-- Filesystem Usage (df -h) -->
+        <section class="card">
+          <div class="card-header-row">
+            <h2>💾 Filesystem Usage (<code>df -h</code>)</h2>
+            <span class="card-sub-info">Filtered: non-tmpfs mounts</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Filesystem</th>
+                  <th>Size</th>
+                  <th>Used</th>
+                  <th>Avail</th>
+                  <th>Use %</th>
+                  <th>Mounted On</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-filesystems">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Top Processes by CPU (ps -eo pid,comm,%cpu,%mem) -->
+        <section class="card">
+          <div class="card-header-row">
+            <h2>⚙️ Top Processes by CPU (<code>ps -eo pid,comm,%cpu,%mem</code>)</h2>
+            <div class="search-wrap">
+              <input type="text" id="proc-filter" placeholder="Filter processes..." class="table-search">
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>PID</th>
+                  <th>Command</th>
+                  <th>CPU %</th>
+                  <th>MEM %</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-processes">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column: Security Auth Log Scan & Terminal -->
+      <div class="col-side">
+        <!-- Auth Log Scan Section -->
+        <section class="card">
+          <div class="card-header-row">
+            <h2>🔐 Authentication Log Scan</h2>
+            <span class="badge badge-dark"><code>/var/log/auth.log</code></span>
+          </div>
+          <div class="auth-log-box" id="auth-log-content">
+            <!-- Dynamic logs -->
+          </div>
+          <div class="auth-legend">
+            <span>Patterns: <code>failed password</code>, <code>authentication failure</code>, <code>invalid user</code></span>
+          </div>
+        </section>
+
+        <!-- Live Terminal Report Output -->
+        <section class="card terminal-card">
+          <div class="terminal-bar">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <span class="terminal-tag">bash &bull; ./system_health.sh</span>
+            <button id="btn-copy-report" class="btn-copy" title="Copy raw report">📋 Copy</button>
+          </div>
+          <div class="terminal-view">
+            <pre id="raw-report-pre">Generating report...</pre>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Linux System Health &amp; Log Monitor &bull; Bash, Linux Utilities, awk, grep, df, ps &bull; <a href="https://github.com/taniyadiwaker6-star/linux-system-health-monitor" target="_blank">View GitHub Repo</a></p>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
