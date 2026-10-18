@@ -166,11 +166,19 @@ function generateRawBashReport(data) {
   const d = new Date();
   const dateStr = d.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
   const hasDiskAlert = data.filesystems.some(f => f.pct >= 90);
+  const isHighLoad = data.cpuPct >= 80;
+  const hasAuthAlert = data.authFailCount > 0;
+  const isWarning = hasDiskAlert || isHighLoad || hasAuthAlert;
 
   let text = '';
-  text += 'LINUX SYSTEM HEALTH REPORT\n';
-  text += `Host: ${data.hostname}\n`;
-  text += `Generated: ${dateStr}\n\n`;
+  text += '================================================================================\n';
+  text += '                         LINUX SYSTEM HEALTH REPORT                             \n';
+  text += '================================================================================\n';
+  text += `Host:       ${data.hostname}\n`;
+  text += 'OS:         Ubuntu 24.04 LTS (x86_64)\n';
+  text += 'Kernel:     6.8.0-45-generic\n';
+  text += 'User:       ubuntu\n';
+  text += `Generated:  ${dateStr}\n\n`;
 
   text += '=== UPTIME AND LOAD ===\n';
   text += ` ${d.toTimeString().substring(0, 8)} up ${data.uptime},  load average: ${data.loadAvg.map(n => n.toFixed(2)).join(', ')}\n\n`;
@@ -207,23 +215,38 @@ function generateRawBashReport(data) {
   text += '\n';
 
   text += '=== FAILED AUTHENTICATION EVENTS ===\n';
-  text += 'Source: /var/log/auth.log\n';
+  text += 'Source: /var/log/auth.log (traditional log file)\n';
   if (data.authFailCount > 0) {
+    text += 'Recent authentication failure events (last 10):\n';
     const fails = data.authLogs.filter(l => l.type === 'fail');
     fails.forEach(f => {
       text += `${f.text}\n`;
     });
-    text += `Matching lines in available log: ${data.authFailCount}\n\n`;
+    text += `Total matching failure events: ${data.authFailCount}\n\n`;
   } else {
     text += 'No matching authentication failures found in this log.\n\n';
   }
 
   text += '=== STATUS SUMMARY ===\n';
-  if (hasDiskAlert) {
-    text += 'WARNING: at least one filesystem is at or above 90% usage.\n';
+  text += `Overall Health Status: [${isWarning ? 'WARNING' : 'HEALTHY'}]\n`;
+  text += '--------------------------------------------------------------------------------\n';
+  if (isWarning) {
+    text += 'Active Warnings / Critical Issues:\n';
+    if (hasDiskAlert) {
+      data.filesystems.filter(f => f.pct >= 90).forEach(f => {
+        text += `  [!] Disk space critical: ${f.fs} on ${f.mount} (${f.pct}%)\n`;
+      });
+    }
+    if (isHighLoad) {
+      text += `  [!] High CPU load: 1-min load average (${data.loadAvg[0]}) exceeds CPU core count (${data.cores})\n`;
+    }
+    if (hasAuthAlert) {
+      text += `  [!] Security alert: ${data.authFailCount} failed authentication event(s) detected in /var/log/auth.log\n`;
+    }
   } else {
-    text += 'No filesystem at or above 90% usage was detected.\n';
+    text += '  [*] No critical resource thresholds or security alerts triggered.\n';
   }
+  text += '--------------------------------------------------------------------------------\n';
   text += 'Report completed.\n';
 
   return text;
